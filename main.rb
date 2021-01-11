@@ -4,6 +4,8 @@ require 'net/http'
 require 'uri'
 require 'json'
 
+BACKUP_RETENTION = ENV.fetch("BACKUP_RETENTION", 0)
+
 # Listing instances
 instances = `scw instance server list`.split("\n")
                                       .map { |row| row.split(/\s{2,}/o)}
@@ -88,13 +90,13 @@ snapshots = `scw instance snapshot list`.split("\n")
 
 data_output.each do |instance_name, instance_data|
     images_to_destroy = instance_data["IMAGES"].select{ |image_name, image_data| image_data["NAME"].start_with?("backup_image") }
-    images_to_destroy = images_to_destroy.drop(1)
+    images_to_destroy = images_to_destroy.drop(BACKUP_RETENTION)
 
     images_to_destroy.each do |image_name, image_data| 
         image_id = image_data["ID"]
         system("scw instance image delete #{image_id}")
         snapshots_to_destroy = snapshots.select { |snapshot| snapshot["NAME"].start_with?(image_data["NAME"]) }
-        
+
         snapshots_to_destroy.each do |snapshot|
             system("scw instance snapshot delete #{snapshot["ID"]}")
         end
