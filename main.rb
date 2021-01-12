@@ -5,7 +5,7 @@ require 'uri'
 require 'json'
 
 # Number of backup we want to keep for each instance
-BACKUP_RETENTION = ENV.fetch('BACKUP_RETENTION', 1)
+BACKUP_RETENTION = ENV.fetch('BACKUP_RETENTION', 1).to_i
 TAG = ENV['TAG']
 
 def tag?
