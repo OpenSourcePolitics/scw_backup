@@ -6,6 +6,11 @@ require 'json'
 
 # Number of backup we want to keep for each instance
 BACKUP_RETENTION = ENV.fetch('BACKUP_RETENTION', 1)
+TAG = ENV['TAG']
+
+def tag?
+  !TAG.nil? && !TAG.empty?
+end
 
 def dry_run?
   ENV['DRY_RUN'] == 'true'
@@ -20,6 +25,10 @@ def list(component)
   `scw instance #{component} list`.split("\n")
       .map { |row| row.split(/\s{2,}/o) }
       .drop(1)
+end
+
+def parse_tags(tags_string)
+  tags_string.tr('[', '').tr(']', '').split(' ')
 end
 
 def list_images
@@ -111,7 +120,7 @@ list_servers.each do |row|
       'ZONE' => row[4],
       'PUBLIC IP' => row[5],
       'PRIVATE IP' => row[6],
-      'TAGS' => row[7],
+      'TAGS' => parse_tags(row[7]),
       'IMAGE NAME' => row[8],
       'MODIFICATION DATE' => row[9],
       'CREATION DATE' => row[10],
@@ -123,6 +132,13 @@ list_servers.each do |row|
       'ARCH' => row[16],
       'IMAGE ID' => row[17]
   })
+end
+
+if tag?
+  instances_data_output = instances_data_output.select do |_instance, instance_data|
+    instance_data['TAGS'].include?(TAG)
+  end
+  pp "Instances after filtering by tag #{instances_data_output}" if verbose?
 end
 
 # Post request to create a backup for each instance
