@@ -1,7 +1,7 @@
 DRY_RUN := true
-VERBOSE := false
-TAG := ""
-BACKUP_RETENTION :=1
+VERBOSE := true
+TAG := "backup"
+BACKUP_RETENTION := 3
 
 build:
 	docker build -t scw_backup . 

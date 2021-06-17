@@ -108,79 +108,83 @@ def delete_images_and_snapshots!(images_to_destroy)
   end
 end
 
-# Init hash with listed instances and data for each instance
-instances_data_output = {}
+def main
+  # Init hash with listed instances and data for each instance
+  instances_data_output = {}
 
-list_servers.each do |row|
-  instances_data_output.store(row[1], {
-      'ID' => row[0],
-      'NAME' => row[1],
-      'TYPE' => row[2],
-      'STATE' => row[3],
-      'ZONE' => row[4],
-      'PUBLIC IP' => row[5],
-      'PRIVATE IP' => row[6],
-      'TAGS' => parse_tags(row[7]),
-      'IMAGE NAME' => row[8],
-      'MODIFICATION DATE' => row[9],
-      'CREATION DATE' => row[10],
-      'VOLUMES' => row[11],
-      'PROTECTED' => row[12],
-      'SECURITY GROUP NAME' => row[13],
-      'SECURITY GROUP ID' => row[14],
-      'STATE DETAIL' => row[15],
-      'ARCH' => row[16],
-      'IMAGE ID' => row[17]
-  })
-end
-
-if tag?
-  instances_data_output = instances_data_output.select do |_instance, instance_data|
-    instance_data['TAGS'].include?(TAG)
+  list_servers.each do |row|
+    instances_data_output.store(row[1], {
+        'ID' => row[0],
+        'NAME' => row[1],
+        'TYPE' => row[2],
+        'STATE' => row[3],
+        'ZONE' => row[4],
+        'PUBLIC IP' => row[5],
+        'PRIVATE IP' => row[6],
+        'TAGS' => parse_tags(row[7]),
+        'IMAGE NAME' => row[8],
+        'MODIFICATION DATE' => row[9],
+        'CREATION DATE' => row[10],
+        'VOLUMES' => row[11],
+        'PROTECTED' => row[12],
+        'SECURITY GROUP NAME' => row[13],
+        'SECURITY GROUP ID' => row[14],
+        'STATE DETAIL' => row[15],
+        'ARCH' => row[16],
+        'IMAGE ID' => row[17]
+    })
   end
-  pp "Instances after filtering by tag #{instances_data_output}" if verbose?
-end
 
-# Post request to create a backup for each instance
-instances_data_output.each do |_instance, instance_data|
-  create_backup!(server_id: instance_data['ID'], server_name: instance_data['NAME'])
-end
-# End of post request
+  if tag?
+    instances_data_output = instances_data_output.select do |_instance, instance_data|
+      instance_data['TAGS'].include?(TAG)
+    end
+    pp "Instances after filtering by tag #{instances_data_output}" if verbose?
+  end
 
-# Init hash with listed images and data for each image
-images_data_output = {}
+  # Post request to create a backup for each instance
+  instances_data_output.each do |_instance, instance_data|
+    create_backup!(server_id: instance_data['ID'], server_name: instance_data['NAME'])
+  end
+  # End of post request
 
-list_images.each do |row|
-  images_data_output.store(row[1], {
-      'ID' => row[0],
-      'NAME' => row[1],
-      'STATE' => row[2],
-      'PUBLIC' => row[3],
-      'ZONE' => row[4],
-      'VOLUMES' => row[5],
-      'SERVER NAME' => row[6],
-      'SERVER ID' => row[7],
-      'ARCH' => row[8],
-      'ORGANIZATION ID' => row[9],
-      'PROJECT ID' => row[10],
-      'CREATION DATE' => row[11],
-      'MODIFICATION DATE' => row[12]
-  })
-end
+  # Init hash with listed images and data for each image
+  images_data_output = {}
 
-# Add existing images for each instance in listed instances hash
-instances_data_output.dup.each do |_instance_name, instance_data|
-  instance_data['IMAGES'] = images_data_output.select do |_image_name, image_data|
-    instance_data['ID'] == image_data['SERVER ID']
+  list_images.each do |row|
+    images_data_output.store(row[1], {
+        'ID' => row[0],
+        'NAME' => row[1],
+        'STATE' => row[2],
+        'PUBLIC' => row[3],
+        'ZONE' => row[4],
+        'VOLUMES' => row[5],
+        'SERVER NAME' => row[6],
+        'SERVER ID' => row[7],
+        'ARCH' => row[8],
+        'ORGANIZATION ID' => row[9],
+        'PROJECT ID' => row[10],
+        'CREATION DATE' => row[11],
+        'MODIFICATION DATE' => row[12]
+    })
+  end
+
+  # Add existing images for each instance in listed instances hash
+  instances_data_output.dup.each do |_instance_name, instance_data|
+    instance_data['IMAGES'] = images_data_output.select do |_image_name, image_data|
+      instance_data['ID'] == image_data['SERVER ID']
+    end
+  end
+
+  # List all images for each instance and exclude the last backup images according to the backup retention number
+  instances_data_output.each do |_instance_name, instance_data|
+    images_to_destroy = instance_data['IMAGES'].select do |_image_name, image_data|
+      image_data['NAME'].start_with?('backup_image')
+    end
+    images_to_destroy = images_to_destroy.drop(BACKUP_RETENTION)
+
+    delete_images_and_snapshots!(images_to_destroy)
   end
 end
 
-# List all images for each instance and exclude the last backup images according to the backup retention number
-instances_data_output.each do |_instance_name, instance_data|
-  images_to_destroy = instance_data['IMAGES'].select do |_image_name, image_data|
-    image_data['NAME'].start_with?('backup_image')
-  end
-  images_to_destroy = images_to_destroy.drop(BACKUP_RETENTION)
-
-  delete_images_and_snapshots!(images_to_destroy)
-end
+main
