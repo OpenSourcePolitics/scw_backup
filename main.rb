@@ -3,12 +3,12 @@
 require 'net/http'
 require 'uri'
 require 'json'
-require "uri"
-require "net/http"
+require 'uri'
+require 'net/http'
 
 # Number of backup we want to keep for each instance
-ROCKET_SECRET_TOKEN = ENV.fetch('ROCKET_SECRET_TOKEN', "").to_s
-ROCKET_USER_ID = ENV.fetch('ROCKET_USER_ID', "").to_s
+ROCKET_SECRET_TOKEN = ENV.fetch('ROCKET_SECRET_TOKEN', '').to_s
+ROCKET_USER_ID = ENV.fetch('ROCKET_USER_ID', '').to_s
 BACKUP_RETENTION = ENV.fetch('BACKUP_RETENTION', 1).to_i
 TAG = ENV['TAG']
 
@@ -27,8 +27,8 @@ end
 # Listing component
 def list(component)
   `scw instance #{component} list`.split("\n")
-      .map { |row| row.split(/\s{2,}/o) }
-      .drop(1)
+                                  .map { |row| row.split(/\s{2,}/o) }
+                                  .drop(1)
 end
 
 def parse_tags(tags_string)
@@ -60,27 +60,27 @@ end
 def notify_rocket(request, backup_name)
   return if request.nil?
 
-  if request.code == "200"
-    message = "✅ #{backup_name} has been successfully created"
-  else
-    message = "❌ Something went wrong when creating #{backup_name}: #{JSON.parse(request.body)}"
-  end
+  message = if request.code == '200'
+              "✅ #{backup_name} has been successfully created"
+            else
+              "❌ Something went wrong when creating #{backup_name}: #{JSON.parse(request.body)}"
+            end
 
-  url = URI("https://osp.rocket.chat/api/v1/chat.sendMessage")
+  url = URI('https://osp.rocket.chat/api/v1/chat.sendMessage')
   https = Net::HTTP.new(url.host, url.port)
   https.use_ssl = true
 
   request = Net::HTTP::Post.new(url)
-  request["X-Auth-Token"] = ROCKET_SECRET_TOKEN
-  request["X-User-Id"] = ROCKET_USER_ID
-  request["Content-Type"] = "application/json"
+  request['X-Auth-Token'] = ROCKET_SECRET_TOKEN
+  request['X-User-Id'] = ROCKET_USER_ID
+  request['Content-Type'] = 'application/json'
   request.body = {
-      message:
-          {
-              rid:
-                  "95LEPF7P8RXoicCGZ",
-              msg: "#{message}"
-          }
+    message:
+        {
+          rid:
+                '95LEPF7P8RXoicCGZ',
+          msg: message.to_s
+        }
   }.to_json
 
   response = https.request(request)
@@ -118,7 +118,7 @@ end
 
 def get_snapshot_ids_for(image_data, snapshots:)
   snapshots.select { |snapshot| snapshot['NAME'].start_with?(image_data['NAME']) }
-      .map { |snapshot| snapshot['ID'] }
+           .map { |snapshot| snapshot['ID'] }
 end
 
 def delete_image!(image_data)
@@ -150,25 +150,25 @@ def main
 
   list_servers.each do |row|
     instances_data_output.store(row[1], {
-        'ID' => row[0],
-        'NAME' => row[1],
-        'TYPE' => row[2],
-        'STATE' => row[3],
-        'ZONE' => row[4],
-        'PUBLIC IP' => row[5],
-        'PRIVATE IP' => row[6],
-        'TAGS' => parse_tags(row[7]),
-        'IMAGE NAME' => row[8],
-        'MODIFICATION DATE' => row[9],
-        'CREATION DATE' => row[10],
-        'VOLUMES' => row[11],
-        'PROTECTED' => row[12],
-        'SECURITY GROUP NAME' => row[13],
-        'SECURITY GROUP ID' => row[14],
-        'STATE DETAIL' => row[15],
-        'ARCH' => row[16],
-        'IMAGE ID' => row[17]
-    })
+                                  'ID' => row[0],
+                                  'NAME' => row[1],
+                                  'TYPE' => row[2],
+                                  'STATE' => row[3],
+                                  'ZONE' => row[4],
+                                  'PUBLIC IP' => row[5],
+                                  'PRIVATE IP' => row[6],
+                                  'TAGS' => parse_tags(row[7]),
+                                  'IMAGE NAME' => row[8],
+                                  'MODIFICATION DATE' => row[9],
+                                  'CREATION DATE' => row[10],
+                                  'VOLUMES' => row[11],
+                                  'PROTECTED' => row[12],
+                                  'SECURITY GROUP NAME' => row[13],
+                                  'SECURITY GROUP ID' => row[14],
+                                  'STATE DETAIL' => row[15],
+                                  'ARCH' => row[16],
+                                  'IMAGE ID' => row[17]
+                                })
   end
 
   if tag?
@@ -189,20 +189,20 @@ def main
 
   list_images.each do |row|
     images_data_output.store(row[1], {
-        'ID' => row[0],
-        'NAME' => row[1],
-        'STATE' => row[2],
-        'PUBLIC' => row[3],
-        'ZONE' => row[4],
-        'VOLUMES' => row[5],
-        'SERVER NAME' => row[6],
-        'SERVER ID' => row[7],
-        'ARCH' => row[8],
-        'ORGANIZATION ID' => row[9],
-        'PROJECT ID' => row[10],
-        'CREATION DATE' => row[11],
-        'MODIFICATION DATE' => row[12]
-    })
+                               'ID' => row[0],
+                               'NAME' => row[1],
+                               'STATE' => row[2],
+                               'PUBLIC' => row[3],
+                               'ZONE' => row[4],
+                               'VOLUMES' => row[5],
+                               'SERVER NAME' => row[6],
+                               'SERVER ID' => row[7],
+                               'ARCH' => row[8],
+                               'ORGANIZATION ID' => row[9],
+                               'PROJECT ID' => row[10],
+                               'CREATION DATE' => row[11],
+                               'MODIFICATION DATE' => row[12]
+                             })
   end
 
   # Add existing images for each instance in listed instances hash
