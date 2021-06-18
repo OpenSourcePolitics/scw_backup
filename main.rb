@@ -3,8 +3,12 @@
 require 'net/http'
 require 'uri'
 require 'json'
+require "uri"
+require "net/http"
 
 # Number of backup we want to keep for each instance
+ROCKET_SECRET_TOKEN = ENV.fetch('ROCKET_SECRET_TOKEN', "").to_s
+ROCKET_USER_ID = ENV.fetch('ROCKET_USER_ID', "").to_s
 BACKUP_RETENTION = ENV.fetch('BACKUP_RETENTION', 1).to_i
 TAG = ENV['TAG']
 
@@ -53,6 +57,36 @@ def list_snapshots
   snapshots
 end
 
+def notify_rocket(request, backup_name)
+  return if request.nil?
+
+  if request.code == "200"
+    message = "✅ #{backup_name} has been successfully created"
+  else
+    message = "❌ Something went wrong when creating #{backup_name}: #{JSON.parse(request.body)}"
+  end
+
+  url = URI("https://osp.rocket.chat/api/v1/chat.sendMessage")
+  https = Net::HTTP.new(url.host, url.port)
+  https.use_ssl = true
+
+  request = Net::HTTP::Post.new(url)
+  request["X-Auth-Token"] = ROCKET_SECRET_TOKEN
+  request["X-User-Id"] = ROCKET_USER_ID
+  request["Content-Type"] = "application/json"
+  request.body = {
+      message:
+          {
+              rid:
+                  "95LEPF7P8RXoicCGZ",
+              msg: "#{message}"
+          }
+  }.to_json
+
+  response = https.request(request)
+  puts response.read_body
+end
+
 def send_request(server_id, backup_name)
   # Header and body content for the request
   header = { 'Content-Type' => 'application/json', 'X-Auth-Token' => ENV['SECRET_KEY'] }
@@ -69,15 +103,17 @@ def send_request(server_id, backup_name)
 
   response = http.request(req)
   pp "HTTP Response Request : #{response.body}" if verbose?
+  response
 end
 
-def create_backup!(server_id:, server_name:)
+def create_backup_and_notify!(server_id:, server_name:)
   timestamp = Time.now.utc.strftime('%Y-%m-%d_%H-%M')
   backup_name = "backup_image_#{server_name}_#{timestamp}"
 
   pp "Backup name : #{backup_name}" if verbose?
 
-  send_request(server_id, backup_name)
+  request = send_request(server_id, backup_name)
+  notify_rocket(request, backup_name)
 end
 
 def get_snapshot_ids_for(image_data, snapshots:)
@@ -144,7 +180,7 @@ def main
 
   # Post request to create a backup for each instance
   instances_data_output.each do |_instance, instance_data|
-    create_backup!(server_id: instance_data['ID'], server_name: instance_data['NAME'])
+    create_backup_and_notify!(server_id: instance_data['ID'], server_name: instance_data['NAME'])
   end
   # End of post request
 
